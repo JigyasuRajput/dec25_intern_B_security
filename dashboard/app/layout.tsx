@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { ClerkProvider } from "@clerk/nextjs"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { SessionProvider } from "next-auth/react"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -37,13 +38,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <ClerkProvider>
-      <html lang="en" className="dark">
-        <body className={`font-sans antialiased`}>
+    <html lang="en" className="dark">
+      <body className={`font-sans antialiased`}>
+        <SessionProvider>
           {children}
-          <Analytics />
-        </body>
-      </html>
-    </ClerkProvider>
+        </SessionProvider>
+        <Analytics />
+      </body>
+    </html>
   )
 }
