@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlmodel import JSON, Column, Enum, Field, Relationship, SQLModel
@@ -69,11 +69,14 @@ class EmailEvent(SQLModel, table=True):
         default=None, sa_column=Column(Enum(RiskTier, name="risk_tier_enum"))
     )
     analysis_result: Optional[dict] = Field(default=None, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(
-        default_factory=datetime.utcnow,
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
         nullable=False,
-        sa_column_kwargs={"onupdate": datetime.utcnow},
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
     )
 
     organisation: Organisation = Relationship(back_populates="email_events")
