@@ -2,10 +2,10 @@ import os
 from collections.abc import AsyncGenerator
 
 from dotenv import load_dotenv
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import QueuePool
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel.ext.asyncio.session import create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from .models import EmailEvent, Organisation, User  # noqa: F401 - ensure metadata import
 
@@ -19,12 +19,17 @@ if not DATABASE_URL:
 if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-# NeonDB requires SSL and works best with NullPool for serverless
+# GCP Cloud SQL PostgreSQL configuration
+# Using QueuePool for connection pooling (suitable for long-running services)
+# For Cloud SQL, ensure DATABASE_URL includes ?sslmode=require or appropriate SSL params
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,
     future=True,
-    poolclass=NullPool,  # Better for serverless/NeonDB
+    poolclass=QueuePool,
+    pool_size=5,  # Number of connections to keep open
+    max_overflow=10,  # Additional connections allowed beyond pool_size
+    pool_pre_ping=True,  # Verify connections before using (handles dropped connections)
 )
 
 
