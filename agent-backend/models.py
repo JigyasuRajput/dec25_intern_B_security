@@ -62,7 +62,10 @@ class EmailEvent(SQLModel, table=True):
     body_preview: Optional[str] = None
     status: EmailStatus = Field(
         default=EmailStatus.pending,
-        sa_column=Column(Enum(EmailStatus, name="email_status_enum")),
+        sa_column=Column(
+            Enum(EmailStatus, name="email_status_enum"),
+            server_default="PENDING",  # DB-side default for inserts bypassing ORM
+        ),
     )
     risk_score: Optional[int] = Field(default=None)
     risk_tier: Optional[RiskTier] = Field(
