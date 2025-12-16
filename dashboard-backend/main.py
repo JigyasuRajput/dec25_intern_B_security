@@ -149,7 +149,7 @@ class EmailCreate(SQLModel):
 
 
 class EmailRead(SQLModel):
-    id: str
+    id: uuid.UUID
     sender: str
     recipient: str
     subject: str

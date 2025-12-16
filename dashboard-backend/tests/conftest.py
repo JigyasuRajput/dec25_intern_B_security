@@ -58,8 +58,8 @@ async def test_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
-async def test_org(test_session: AsyncSession) -> Organisation:
-    """Create a test organisation."""
+async def test_org(test_session: AsyncSession) -> dict:
+    """Create a test organisation and return its data as a dict."""
     org = Organisation(
         id=uuid.uuid4(),
         name="Test Organisation",
@@ -69,15 +69,21 @@ async def test_org(test_session: AsyncSession) -> Organisation:
     test_session.add(org)
     await test_session.commit()
     await test_session.refresh(org)
-    return org
+    # Return plain dict to avoid lazy loading issues
+    return {
+        "id": org.id,
+        "name": org.name,
+        "domain": org.domain,
+        "api_key": org.api_key,
+    }
 
 
 @pytest_asyncio.fixture
-async def test_admin_user(test_session: AsyncSession, test_org: Organisation) -> User:
-    """Create a test admin user."""
+async def test_admin_user(test_session: AsyncSession, test_org: dict) -> dict:
+    """Create a test admin user and return its data as a dict."""
     user = User(
         id=uuid.uuid4(),
-        org_id=test_org.id,
+        org_id=test_org["id"],
         clerk_id="clerk_admin_123",
         email="admin@test.com",
         role=UserRole.admin,
@@ -85,15 +91,22 @@ async def test_admin_user(test_session: AsyncSession, test_org: Organisation) ->
     test_session.add(user)
     await test_session.commit()
     await test_session.refresh(user)
-    return user
+    # Return plain dict to avoid lazy loading issues
+    return {
+        "id": user.id,
+        "org_id": user.org_id,
+        "clerk_id": user.clerk_id,
+        "email": user.email,
+        "role": user.role,
+    }
 
 
 @pytest_asyncio.fixture
-async def test_member_user(test_session: AsyncSession, test_org: Organisation) -> User:
-    """Create a test member user."""
+async def test_member_user(test_session: AsyncSession, test_org: dict) -> dict:
+    """Create a test member user and return its data as a dict."""
     user = User(
         id=uuid.uuid4(),
-        org_id=test_org.id,
+        org_id=test_org["id"],
         clerk_id="clerk_member_456",
         email="member@test.com",
         role=UserRole.member,
@@ -101,7 +114,14 @@ async def test_member_user(test_session: AsyncSession, test_org: Organisation) -
     test_session.add(user)
     await test_session.commit()
     await test_session.refresh(user)
-    return user
+    # Return plain dict to avoid lazy loading issues
+    return {
+        "id": user.id,
+        "org_id": user.org_id,
+        "clerk_id": user.clerk_id,
+        "email": user.email,
+        "role": user.role,
+    }
 
 
 def create_mock_jwt(clerk_id: str) -> str:
@@ -111,9 +131,9 @@ def create_mock_jwt(clerk_id: str) -> str:
     return jwt.encode(payload, "test-secret", algorithm="HS256")
 
 
-def auth_header_for_user(user: User) -> dict[str, str]:
-    """Generate Authorization header for a user."""
-    token = create_mock_jwt(user.clerk_id)
+def auth_header_for_user(user: dict) -> dict[str, str]:
+    """Generate Authorization header for a user dict."""
+    token = create_mock_jwt(user["clerk_id"])
     return {"Authorization": f"Bearer {token}"}
 
 
