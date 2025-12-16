@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 import enum
 import uuid
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime
+from typing import List, Optional
 
 from sqlmodel import JSON, Column, Enum, Field, Relationship, SQLModel
 
@@ -32,11 +30,10 @@ class Organisation(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
     name: str
     domain: str
-    api_key_hash: str = Field(index=True, unique=True)  # Store hashed value only
-    api_key_prefix: str = Field(max_length=8)  # For identification in UI (e.g., "pg_abc123")
+    api_key: str = Field(index=True, unique=True)
 
-    users: list["User"] = Relationship(back_populates="organisation")
-    email_events: list["EmailEvent"] = Relationship(back_populates="organisation")
+    users: List["User"] = Relationship(back_populates="organisation")
+    email_events: List["EmailEvent"] = Relationship(back_populates="organisation")
 
 
 class User(SQLModel, table=True):
@@ -48,7 +45,7 @@ class User(SQLModel, table=True):
     email: str = Field(index=True)
     role: UserRole = Field(sa_column=Column(Enum(UserRole, name="user_role_enum")))
 
-    organisation: Organisation = Relationship(back_populates="users")
+    organisation: Optional["Organisation"] = Relationship(back_populates="users")
 
 
 class EmailEvent(SQLModel, table=True):
@@ -62,24 +59,18 @@ class EmailEvent(SQLModel, table=True):
     body_preview: Optional[str] = None
     status: EmailStatus = Field(
         default=EmailStatus.pending,
-        sa_column=Column(
-            Enum(EmailStatus, name="email_status_enum"),
-            server_default="PENDING",  # DB-side default for inserts bypassing ORM
-        ),
+        sa_column=Column(Enum(EmailStatus, name="email_status_enum")),
     )
     risk_score: Optional[int] = Field(default=None)
     risk_tier: Optional[RiskTier] = Field(
         default=None, sa_column=Column(Enum(RiskTier, name="risk_tier_enum"))
     )
     analysis_result: Optional[dict] = Field(default=None, sa_column=Column(JSON))
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        nullable=False,
-    )
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=datetime.utcnow,
         nullable=False,
-        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
+        sa_column_kwargs={"onupdate": datetime.utcnow},
     )
 
-    organisation: Organisation = Relationship(back_populates="email_events")
+    organisation: Optional["Organisation"] = Relationship(back_populates="email_events")

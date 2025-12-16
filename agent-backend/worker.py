@@ -8,8 +8,8 @@ from datetime import datetime, timezone
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from .database import get_session, init_db
-from .models import EmailEvent, EmailStatus, RiskTier
+from database import get_session, init_db
+from models import EmailEvent, EmailStatus, RiskTier
 
 POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "5"))
 BATCH_LIMIT = int(os.getenv("BATCH_LIMIT", "10"))
@@ -64,28 +64,17 @@ async def process_email(session: AsyncSession, email: EmailEvent) -> None:
 
 
 async def run_loop() -> None:
-    """Main worker loop that polls for pending emails and processes them.
-    
-    Each iteration acquires a fresh session to avoid stale reads,
-    connection timeouts, and identity-map bloat from long-lived sessions.
-    """
     await init_db()
-    while True:
-        try:
-            # Acquire a fresh session for each poll iteration
-            async for session in get_session():
-                pending = await fetch_pending(session)
-                if not pending:
-                    break  # Exit session context, sleep, then get new session
-                
-                for email in pending:
-                    await process_email(session, email)
-                break  # Exit session context after processing batch
-        except Exception as e:  # noqa: BLE001
-            # Log error but continue running - session will be cleaned up
-            print(f"Worker error: {e}")
-        
-        await asyncio.sleep(POLL_INTERVAL_SECONDS)
+    async for session in get_session():
+        while True:
+            pending = await fetch_pending(session)
+            if not pending:
+                await asyncio.sleep(POLL_INTERVAL_SECONDS)
+                continue
+
+            for email in pending:
+                await process_email(session, email)
+            await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
 
 def main() -> None:
